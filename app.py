@@ -74,6 +74,19 @@ def dashboard():
         return render_template("dashboard.html", name="User", role="Guest")
     return render_template("dashboard.html", name=u["name"], role=u["role"])
 
+@app.route("/policies/university")
+def university_policies():
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM policies WHERE policy_level = 'University'")
+        policies = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template("policies_university.html", policies=policies)
+    except Exception as e:
+        return f"Database error: {e}"
+
 @app.route("/logout")
 def logout():
     session.clear()

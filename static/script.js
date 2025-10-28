@@ -1,0 +1,65 @@
+document.querySelector("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const email = document.querySelector("#loginEmail").value;
+  const password = document.querySelector("#loginPassword").value;
+
+  const response = await fetch("/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+  });
+
+  if (response.redirected) {
+    window.location.href = response.url;
+  } else {
+    const text = await response.text();
+    if (text.includes("Welcome") || text.includes("Dashboard")) {
+      window.location.href = "/dashboard";
+    } else {
+      alert("Invalid email or password. Please try again.");
+    }
+  }
+});
+
+// Signup modal functionality
+document.addEventListener("DOMContentLoaded", function() {
+  const signupOverlay = document.getElementById("signupOverlay");
+  const showSignupBtn = document.getElementById("showSignup");
+  const openSignupLink = document.getElementById("openSignup");
+  const closeSignupLink = document.getElementById("closeSignup");
+  const backToLoginLink = document.getElementById("backToLoginLink");
+
+  // Show signup modal
+  function showSignup() {
+    signupOverlay.style.display = "flex";
+  }
+
+  // Hide signup modal
+  function hideSignup() {
+    signupOverlay.style.display = "none";
+  }
+
+  // Event listeners
+  if (showSignupBtn) showSignupBtn.addEventListener("click", showSignup);
+  if (openSignupLink) openSignupLink.addEventListener("click", showSignup);
+  if (closeSignupLink) closeSignupLink.addEventListener("click", hideSignup);
+  if (backToLoginLink) backToLoginLink.addEventListener("click", hideSignup);
+
+  // Close modal when clicking outside
+  signupOverlay.addEventListener("click", function(e) {
+    if (e.target === signupOverlay) {
+      hideSignup();
+    }
+  });
+
+  // Signup form submission
+  const signupForm = document.getElementById("signupForm");
+  if (signupForm) {
+    signupForm.addEventListener("submit", function(e) {
+      e.preventDefault();
+      alert("Signup functionality not yet implemented. Please contact administrator.");
+      hideSignup();
+    });
+  }
+});

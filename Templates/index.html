@@ -4,16 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GrandGuard - Login</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-  <body class="theme-aurora-prism">
+<body class="theme-aurora-prism">
   <div class="container">
     <!-- Left Side: Login -->
     <div class="login-section">
       <div class="login-content">
         <div class="brand-row">
-          <img src="../assets/GrandGuard.png" alt="GrantGuard logo" class="logo-img" />
+          <img src="{{ url_for('static', filename='assets/GrandGuard.png') }}" alt="GrantGuard logo" class="logo-img" />
                 <span class="sr-only">GrantGuard</span>
         </div>
         <h2>Login to Your Account</h2>
@@ -67,6 +66,6 @@
     <p>© 2025 GrandGuard. All Rights Reserved.</p>
   </footer>
 
-  <script src="script.js"></script>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
