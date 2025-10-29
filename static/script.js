@@ -64,10 +64,25 @@ document.addEventListener("DOMContentLoaded", function() {
   // Signup form submission
   const signupForm = document.getElementById("signupForm");
   if (signupForm) {
-    signupForm.addEventListener("submit", function(e) {
+    signupForm.addEventListener("submit", async function(e) {
       e.preventDefault();
-      alert("Signup functionality not yet implemented. Please contact administrator.");
-      hideSignup();
+      const firstName = document.getElementById("firstName").value;
+      const lastName = document.getElementById("lastName").value;
+      const email = document.getElementById("signupEmail").value;
+      const password = document.getElementById("signupPassword").value;
+
+      const resp = await fetch("/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+      });
+
+      const text = await resp.text();
+      if (resp.ok && (text.includes("Signed up") || text.includes("Welcome"))) {
+        window.location.href = "/dashboard";
+      } else {
+        alert(text || "Signup failed. Please try again.");
+      }
     });
   }
 });

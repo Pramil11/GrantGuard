@@ -29,6 +29,7 @@ def init_db_if_needed():
         return
     try:
         cur = conn.cursor()
+        # awards table
         cur.execute(
             """
             CREATE TABLE IF NOT EXISTS awards (
@@ -40,6 +41,19 @@ def init_db_if_needed():
                 start_date DATE NOT NULL,
                 end_date DATE NOT NULL,
                 status VARCHAR(50) DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB;
+            """
+        )
+        # users table
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                role ENUM('PI','Admin','Finance') NOT NULL DEFAULT 'PI',
+                password VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB;
             """
@@ -95,6 +109,43 @@ def login():
 
     # Your current script.js checks for text like “Welcome”, so return that
     return "Welcome"
+
+@app.route("/signup", methods=["POST"])
+def signup():
+    first = request.form.get("firstName", "").strip()
+    last = request.form.get("lastName", "").strip()
+    email = request.form.get("email", "").strip() or request.form.get("signupEmail", "").strip()
+    password = request.form.get("password", "").strip() or request.form.get("signupPassword", "").strip()
+
+    if not first or not last or not email or not password:
+        return make_response("Missing required fields", 400)
+
+    full_name = f"{first} {last}".strip()
+
+    conn = get_db()
+    if conn is None:
+        return make_response("DB connection failed", 500)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO users (name, email, role, password)
+            VALUES (%s, %s, 'PI', %s)
+            ON DUPLICATE KEY UPDATE name=VALUES(name)
+            """,
+            (full_name, email, password),
+        )
+        conn.commit()
+        cur.close()
+    except Error as e:
+        print(f"DB insert user error: {e}")
+        return make_response("DB insert failed", 500)
+    finally:
+        conn.close()
+
+    # Auto-login after signup
+    session["user"] = {"name": full_name, "role": "PI", "email": email}
+    return "Signed up"
 
 @app.route("/dashboard")
 def dashboard():
