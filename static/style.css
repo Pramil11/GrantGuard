@@ -240,3 +240,71 @@ footer {
     width: 90%;
   }
 }
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* Top brand row */
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* Logo image sizing */
+.logo-img {
+  height: 400px;                 /* adjust to taste */
+  width: auto;
+  display: block;
+  object-fit: contain;
+  border-radius: 8px;           /* remove if you want sharp corners */
+}
+
+/* Slightly smaller logo inside modal if used */
+.modal-logo { height: 36px; margin-bottom: 8px; }
+
+/* If you want to keep the old text logo hidden (safety) */
+.logo { display: none; }
+body.theme-waves {
+  background: linear-gradient(135deg, #b7bca9 0%, #0c4c9f 100%);
+}
+/* Ensure the line shows inside the signup modal */
+.signup-box .switch-text {
+  display: block;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #555;
+}
+.signup-box .switch-text a {
+  color: #0b84f3;
+  font-weight: 600;
+  text-decoration: none;
+}
+.signup-box .switch-text a:hover { text-decoration: underline; }
+/* Ensure the modal can position the close button */
+.signup-box { position: relative; }
+
+/* Close (X) button */
+.signup-close{
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  line-height: 32px;
+  font-size: 28px;
+  font-weight: 700;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  color: #1b2a41;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,.15);
+  transition: transform .12s ease, background .12s ease;
+}
+.signup-close:hover{ transform: rotate(90deg); background: #fff; }
+.signup-close:focus{ outline: 2px solid #0b84f3; outline-offset: 2px; }

@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", function() {
   const openSignupLink = document.getElementById("openSignup");
   const closeSignupLink = document.getElementById("closeSignup");
   const backToLoginLink = document.getElementById("backToLoginLink");
+  const dismissSignup = document.getElementById("dismissSignup");
 
   // Show signup modal
   function showSignup() {
@@ -45,6 +46,7 @@ document.addEventListener("DOMContentLoaded", function() {
   if (openSignupLink) openSignupLink.addEventListener("click", showSignup);
   if (closeSignupLink) closeSignupLink.addEventListener("click", hideSignup);
   if (backToLoginLink) backToLoginLink.addEventListener("click", hideSignup);
+  if (dismissSignup) dismissSignup.addEventListener("click", hideSignup);
 
   // Close modal when clicking outside
   signupOverlay.addEventListener("click", function(e) {
@@ -52,6 +54,12 @@ document.addEventListener("DOMContentLoaded", function() {
       hideSignup();
     }
   });
+
+  document.addEventListener("keydown", function(e){
+  if (e.key === "Escape" && signupOverlay.style.display !== "none") {
+    hideSignup();
+  }
+});
 
   // Signup form submission
   const signupForm = document.getElementById("signupForm");
@@ -63,3 +71,19 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 });
+const backToLoginLink = document.getElementById('backToLoginLink');
+const signupOverlayEl = document.getElementById('signupOverlay');
+
+if (backToLoginLink) {
+  backToLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    // close the modal
+    signupOverlayEl.style.display = 'none';
+    // optional: reset form
+    const sf = document.getElementById('signupForm');
+    if (sf) sf.reset();
+    // focus login email for convenience
+    const loginEmail = document.getElementById('loginEmail');
+    if (loginEmail) loginEmail.focus();
+  });
+}

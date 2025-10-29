@@ -6,7 +6,7 @@
   <title>GrandGuard - Login</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="theme-aurora-prism">
+<body class="theme-waves">
   <div class="container">
     <!-- Left Side: Login -->
     <div class="login-section">
@@ -46,6 +46,13 @@
   <!-- Signup -->
   <div class="signup-overlay" id="signupOverlay">
     <div class="signup-box">
+      <!-- Close (X) -->
+        <button type="button"
+                class="signup-close"
+                id="dismissSignup"
+                aria-label="Close sign up">
+          &times;
+        </button>
       <h2>Create Your Account</h2>
       <form id="signupForm">
         <div class="name-fields">
