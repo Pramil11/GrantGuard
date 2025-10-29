@@ -6,8 +6,32 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+    <nav style="display:flex; gap:12px; margin-bottom:16px;">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/awards/new">Generate Grants</a>
+        <a href="/subawards">Subawards</a>
+        <a href="/settings">Settings</a>
+        <a href="/profile">Profile</a>
+        <a href="/logout">Log out</a>
+    </nav>
+
     <h2>Welcome, {{ name }}!</h2>
     <p>Your role: {{ role }}</p>
-    <a href="/">Log out</a>
+
+    <section style="margin-top:24px;">
+        <h3>Your Grants/Awards</h3>
+        {% if awards and awards|length > 0 %}
+            <ul>
+                {% for a in awards %}
+                <li>
+                    <strong>{{ a.title }}</strong> — {{ a.sponsor }} — ${{ '%.2f' | format(a.amount) }}
+                    ({{ a.start_date }} to {{ a.end_date }}) — Status: {{ a.status }}
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No grants yet. <a href="/awards/new">Create your first grant</a>.</p>
+        {% endif %}
+    </section>
 </body>
 </html>

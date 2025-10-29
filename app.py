@@ -23,6 +23,36 @@ def get_db():
         print(f"DB connect error: {e}")
         return None
 
+def init_db_if_needed():
+    conn = get_db()
+    if conn is None:
+        return
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS awards (
+                award_id INT AUTO_INCREMENT PRIMARY KEY,
+                created_by_email VARCHAR(255) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                sponsor VARCHAR(255) NOT NULL,
+                amount DECIMAL(15,2) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                status VARCHAR(50) DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB;
+            """
+        )
+        conn.commit()
+        cur.close()
+    except Error as e:
+        print(f"DB init error: {e}")
+    finally:
+        conn.close()
+
+# Flask 3+ removed before_first_request; initialize schema at startup instead
+
 @app.route("/")
 def home():
     # your friend’s login page (index.html in templates/)
@@ -71,8 +101,92 @@ def dashboard():
     u = session.get("user")
     if not u:
         # no login yet -> keep simple
-        return render_template("dashboard.html", name="User", role="Guest")
-    return render_template("dashboard.html", name=u["name"], role=u["role"])
+        return render_template("dashboard.html", name="User", role="Guest", awards=[])
+
+    # fetch awards created by this user
+    awards = []
+    conn = get_db()
+    if conn is not None:
+        try:
+            cur = conn.cursor(dictionary=True)
+            cur.execute(
+                "SELECT award_id, title, sponsor, amount, start_date, end_date, status, created_at FROM awards WHERE created_by_email=%s ORDER BY created_at DESC",
+                (u["email"],),
+            )
+            awards = cur.fetchall()
+            cur.close()
+        except Error as e:
+            print(f"DB fetch awards error: {e}")
+        finally:
+            conn.close()
+
+    return render_template("dashboard.html", name=u["name"], role=u["role"], awards=awards)
+
+@app.route("/awards/new")
+def awards_new():
+    u = session.get("user")
+    if not u:
+        return redirect(url_for("home"))
+    return render_template("awards_new.html")
+
+@app.route("/awards", methods=["POST"])
+def awards_create():
+    u = session.get("user")
+    if not u:
+        return redirect(url_for("home"))
+
+    title = request.form.get("title", "").strip()
+    sponsor = request.form.get("sponsor", "").strip()
+    amount = request.form.get("amount", "").strip()
+    start_date = request.form.get("start_date", "").strip()
+    end_date = request.form.get("end_date", "").strip()
+
+    if not title or not sponsor or not amount or not start_date or not end_date:
+        return make_response("Missing required fields", 400)
+
+    conn = get_db()
+    if conn is None:
+        return make_response("DB connection failed", 500)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO awards (created_by_email, title, sponsor, amount, start_date, end_date)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            """,
+            (u["email"], title, sponsor, amount, start_date, end_date),
+        )
+        conn.commit()
+        cur.close()
+    except Error as e:
+        print(f"DB insert award error: {e}")
+        return make_response("DB insert failed", 500)
+    finally:
+        conn.close()
+
+    return redirect(url_for("dashboard"))
+
+@app.route("/subawards")
+def subawards():
+    u = session.get("user")
+    if not u:
+        return redirect(url_for("home"))
+    # Placeholder for now
+    return render_template("placeholder.html", title="Subawards")
+
+@app.route("/settings")
+def settings():
+    u = session.get("user")
+    if not u:
+        return redirect(url_for("home"))
+    return render_template("placeholder.html", title="Settings")
+
+@app.route("/profile")
+def profile():
+    u = session.get("user")
+    if not u:
+        return redirect(url_for("home"))
+    return render_template("placeholder.html", title="Profile")
 
 @app.route("/policies/university")
 def university_policies():
@@ -93,4 +207,5 @@ def logout():
     return redirect(url_for("home"))
 
 if __name__ == "__main__":
+    init_db_if_needed()
     app.run(debug=True, port=8000)
