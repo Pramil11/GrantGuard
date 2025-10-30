@@ -6,32 +6,43 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <nav style="display:flex; gap:12px; margin-bottom:16px;">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/awards/new">Generate Grants</a>
-        <a href="/subawards">Subawards</a>
-        <a href="/settings">Settings</a>
-        <a href="/profile">Profile</a>
-        <a href="/logout">Log out</a>
-    </nav>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="{{ url_for('static', filename='assets/GrandGuard.png') }}" alt="GrantGuard logo" class="logo-img" />
+                <span class="brand-text">GrantGuard</span>
+            </div>
+            <nav class="menu">
+                <a class="active" href="/dashboard">Dashboard</a>
+                <a href="/awards/new">Generate Grants</a>
+                <a href="/policies/university">Policies</a>
+                <a href="/subawards">Subawards</a>
+                <a href="/settings">Settings</a>
+                <a href="/profile">Profile</a>
+                <a href="/logout">Log out</a>
+            </nav>
+        </aside>
+        <main class="content">
+            <h2>Welcome, {{ name }}!</h2>
+            <p>Your role: {{ role }}</p>
 
-    <h2>Welcome, {{ name }}!</h2>
-    <p>Your role: {{ role }}</p>
-
-    <section style="margin-top:24px;">
-        <h3>Your Grants/Awards</h3>
-        {% if awards and awards|length > 0 %}
-            <ul>
-                {% for a in awards %}
-                <li>
-                    <strong>{{ a.title }}</strong> — {{ a.sponsor }} — ${{ '%.2f' | format(a.amount) }}
-                    ({{ a.start_date }} to {{ a.end_date }}) — Status: {{ a.status }}
-                </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>No grants yet. <a href="/awards/new">Create your first grant</a>.</p>
-        {% endif %}
-    </section>
+            <section style="margin-top:24px;" class="card">
+                <h3>Your Grants/Awards</h3>
+                {% if awards and awards|length > 0 %}
+                    <ul>
+                        {% for a in awards %}
+                        <li>
+                            <strong>{{ a.title }}</strong> — {{ a.sponsor_type or 'N/A' }} — ${{ '%.2f' | format(a.amount) }}
+                            ({{ a.start_date }} to {{ a.end_date }}) — Status: {{ a.status }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No grants yet. <a href="/awards/new">Create your first grant</a>.</p>
+                {% endif %}
+            </section>
+        </main>
+    </div>
+    
 </body>
 </html>

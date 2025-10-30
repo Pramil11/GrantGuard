@@ -1,22 +1,28 @@
 from flask import Flask, render_template, request, redirect, session, url_for, make_response
 import mysql.connector
 from mysql.connector import Error
+import os
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-any-random-secret"  # needed for session
 
-# ---- DB config (EDIT ONLY THESE 4 IF NEEDED) ----
-DB_HOST = "localhost"
-DB_USER = "root"
-DB_PASS = "2085965411Pt$"
-DB_NAME = "grandguard.db"   # keep exactly this; your schema is named grandguard.db
-# -------------------------------------------------
+# ---- DB config (use environment variables in deployment) ----
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASS = os.getenv("DB_PASS", "2085965411Pt$")
+DB_NAME = os.getenv("DB_NAME", "grandguard")  # MySQL database name, no .db suffix
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+# ------------------------------------------------------------
 
 def get_db():
     """Create a connection per request. No app-start crash if creds are wrong."""
     try:
         conn = mysql.connector.connect(
-            host=DB_HOST, user=DB_USER, password=DB_PASS, database=DB_NAME
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASS,
+            database=DB_NAME,
+            port=DB_PORT,
         )
         return conn
     except Error as e:
@@ -139,7 +145,7 @@ def signup():
         cur.close()
     except Error as e:
         print(f"DB insert user error: {e}")
-        return make_response("DB insert failed", 500)
+        return make_response(f"DB insert failed: {e}", 500)
     finally:
         conn.close()
 
@@ -187,12 +193,23 @@ def awards_create():
         return redirect(url_for("home"))
 
     title = request.form.get("title", "").strip()
-    sponsor = request.form.get("sponsor", "").strip()
+    sponsor = None
+    sponsor_type = request.form.get("sponsor_type", "").strip()
+    department = request.form.get("department", "").strip()
+    college = request.form.get("college", "").strip()
+    contact_email = request.form.get("contact_email", "").strip()
     amount = request.form.get("amount", "").strip()
     start_date = request.form.get("start_date", "").strip()
     end_date = request.form.get("end_date", "").strip()
+    abstract = request.form.get("abstract", "").strip()
+    keywords = request.form.get("keywords", "").strip()
+    collaborators = request.form.get("collaborators", "").strip()
+    budget_personnel = request.form.get("budget_personnel", "").strip() or None
+    budget_equipment = request.form.get("budget_equipment", "").strip() or None
+    budget_travel = request.form.get("budget_travel", "").strip() or None
+    budget_materials = request.form.get("budget_materials", "").strip() or None
 
-    if not title or not sponsor or not amount or not start_date or not end_date:
+    if not title or not sponsor_type or not amount or not start_date or not end_date:
         return make_response("Missing required fields", 400)
 
     conn = get_db()
@@ -202,16 +219,28 @@ def awards_create():
         cur = conn.cursor()
         cur.execute(
             """
-            INSERT INTO awards (created_by_email, title, sponsor, amount, start_date, end_date)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO awards (
+              created_by_email, title, sponsor, sponsor_type,
+              department, college, contact_email,
+              amount, start_date, end_date,
+              abstract, keywords, collaborators,
+              budget_personnel, budget_equipment, budget_travel, budget_materials
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
-            (u["email"], title, sponsor, amount, start_date, end_date),
+            (
+                u["email"], title, sponsor, sponsor_type or None,
+                department or None, college or None, contact_email or None,
+                amount, start_date, end_date,
+                abstract or None, keywords or None, collaborators or None,
+                budget_personnel, budget_equipment, budget_travel, budget_materials,
+            ),
         )
         conn.commit()
         cur.close()
     except Error as e:
         print(f"DB insert award error: {e}")
-        return make_response("DB insert failed", 500)
+        return make_response(f"DB insert failed: {e}", 500)
     finally:
         conn.close()
 
