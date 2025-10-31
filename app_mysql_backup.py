@@ -1,87 +1,86 @@
 from flask import Flask, render_template, request, redirect, session, url_for, make_response
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import mysql.connector
+from mysql.connector import Error
 import os
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-any-random-secret"  # needed for session
 
 # ---- DB config (use environment variables in deployment) ----
-# For Render PostgreSQL, use DATABASE_URL format or individual vars
-DATABASE_URL = os.getenv("DATABASE_URL")  # Render provides this
-
-# Fallback to individual vars if DATABASE_URL not provided
-if DATABASE_URL:
-    # Parse DATABASE_URL: postgresql://user:pass@host:port/dbname
-    import urllib.parse as urlparse
-    urlparse.uses_netloc.append("postgresql")
-    url = urlparse.urlparse(DATABASE_URL)
-    DB_HOST = url.hostname
-    DB_USER = url.username
-    DB_PASS = url.password
-    DB_NAME = url.path[1:]  # Remove leading /
-    DB_PORT = url.port or 5432
-else:
-    # Use Render database credentials (local testing)
-    DB_HOST = os.getenv("PGHOST", "dpg-d426gaje5dus73bfka20-a.oregon-postgres.render.com")
-    DB_USER = os.getenv("PGUSER", "admin_user")
-    DB_PASS = os.getenv("PGPASSWORD", "NXUMDSA8WjBCkn5xBKFkxQGaKGaxNie8")
-    DB_NAME = os.getenv("PGDATABASE", "grandguard")
-    DB_PORT = int(os.getenv("PGPORT", "5432"))
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASS = os.getenv("DB_PASS", "2085965411Pt$")
+DB_NAME = os.getenv("DB_NAME", "grandguard")  # MySQL database name, no .db suffix
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
 # ------------------------------------------------------------
 
 def get_db():
     """Create a connection per request. No app-start crash if creds are wrong."""
     try:
-        if DATABASE_URL:
-            conn = psycopg2.connect(DATABASE_URL)
-        else:
-            conn = psycopg2.connect(
-                host=DB_HOST,
-                user=DB_USER,
-                password=DB_PASS,
-                database=DB_NAME,
-                port=DB_PORT,
-            )
+        conn = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASS,
+            database=DB_NAME,
+            port=DB_PORT,
+        )
         return conn
-    except Exception as e:
+    except Error as e:
         print(f"DB connect error: {e}")
         return None
 
 def init_db_if_needed():
-    """Initialize database schema if tables don't exist"""
     conn = get_db()
     if conn is None:
-        print("Warning: Could not connect to database. Schema initialization skipped.")
         return
-    
     try:
         cur = conn.cursor()
-        
-        # Read and execute PostgreSQL schema
-        schema_file = os.path.join(os.path.dirname(__file__), "schema_postgresql.sql")
-        if os.path.exists(schema_file):
-            with open(schema_file, 'r') as f:
-                schema_sql = f.read()
-            cur.execute(schema_sql)
-            conn.commit()
-            print("✓ Database schema initialized")
-        else:
-            print(f"Warning: Schema file {schema_file} not found")
-        
+        # awards table
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS awards (
+                award_id INT AUTO_INCREMENT PRIMARY KEY,
+                created_by_email VARCHAR(255) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                sponsor VARCHAR(255) NOT NULL,
+                amount DECIMAL(15,2) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                status VARCHAR(50) DEFAULT 'Pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB;
+            """
+        )
+        # users table
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                role ENUM('PI','Admin','Finance') NOT NULL DEFAULT 'PI',
+                password VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB;
+            """
+        )
+        conn.commit()
         cur.close()
-    except Exception as e:
+    except Error as e:
         print(f"DB init error: {e}")
-        conn.rollback()
     finally:
         conn.close()
 
+# Flask 3+ removed before_first_request; initialize schema at startup instead
+
 @app.route("/")
 def home():
+    # your friend’s login page (index.html in templates/)
     return render_template("index.html")
 
 @app.route("/login", methods=["POST"])
 def login():
+    # Called by your existing script.js (fetch -> /login)
     email = request.form.get("email", "").strip()
     password = request.form.get("password", "").strip()
 
@@ -90,10 +89,12 @@ def login():
 
     conn = get_db()
     if conn is None:
+        # Don’t silently fall back to Guest; tell the front-end it failed
         return make_response("DB connection failed", 500)
 
     try:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur = conn.cursor(dictionary=True)
+        # columns in your table: user_id, name, email, role, created_at, password
         cur.execute(
             "SELECT name, role FROM users WHERE email=%s AND password=%s",
             (email, password),
@@ -101,14 +102,18 @@ def login():
         user = cur.fetchone()
         cur.close()
         conn.close()
-    except Exception as e:
+    except Error as e:
         print(f"Query error: {e}")
         return make_response("DB query failed", 500)
 
     if not user:
+        # invalid login
         return make_response("Invalid email or password", 401)
 
+    # success: persist to session, so dashboard can show PI/Admin/etc.
     session["user"] = {"name": user["name"], "role": user["role"], "email": email}
+
+    # Your current script.js checks for text like “Welcome”, so return that
     return "Welcome"
 
 @app.route("/signup", methods=["POST"])
@@ -126,27 +131,25 @@ def signup():
     conn = get_db()
     if conn is None:
         return make_response("DB connection failed", 500)
-    
     try:
         cur = conn.cursor()
-        # PostgreSQL uses ON CONFLICT instead of ON DUPLICATE KEY UPDATE
         cur.execute(
             """
             INSERT INTO users (name, email, role, password)
             VALUES (%s, %s, 'PI', %s)
-            ON CONFLICT (email) DO UPDATE SET name=EXCLUDED.name
+            ON DUPLICATE KEY UPDATE name=VALUES(name)
             """,
             (full_name, email, password),
         )
         conn.commit()
         cur.close()
-    except Exception as e:
+    except Error as e:
         print(f"DB insert user error: {e}")
-        conn.rollback()
         return make_response(f"DB insert failed: {e}", 500)
     finally:
         conn.close()
 
+    # Auto-login after signup
     session["user"] = {"name": full_name, "role": "PI", "email": email}
     return "Signed up"
 
@@ -154,20 +157,22 @@ def signup():
 def dashboard():
     u = session.get("user")
     if not u:
+        # no login yet -> keep simple
         return render_template("dashboard.html", name="User", role="Guest", awards=[])
 
+    # fetch awards created by this user
     awards = []
     conn = get_db()
     if conn is not None:
         try:
-            cur = conn.cursor(cursor_factory=RealDictCursor)
+            cur = conn.cursor(dictionary=True)
             cur.execute(
-                "SELECT award_id, title, sponsor_type, amount, start_date, end_date, status, created_at FROM awards WHERE created_by_email=%s ORDER BY created_at DESC",
+                "SELECT award_id, title, sponsor, amount, start_date, end_date, status, created_at FROM awards WHERE created_by_email=%s ORDER BY created_at DESC",
                 (u["email"],),
             )
             awards = cur.fetchall()
             cur.close()
-        except Exception as e:
+        except Error as e:
             print(f"DB fetch awards error: {e}")
         finally:
             conn.close()
@@ -210,7 +215,6 @@ def awards_create():
     conn = get_db()
     if conn is None:
         return make_response("DB connection failed", 500)
-    
     try:
         cur = conn.cursor()
         cur.execute(
@@ -234,9 +238,8 @@ def awards_create():
         )
         conn.commit()
         cur.close()
-    except Exception as e:
+    except Error as e:
         print(f"DB insert award error: {e}")
-        conn.rollback()
         return make_response(f"DB insert failed: {e}", 500)
     finally:
         conn.close()
@@ -248,30 +251,31 @@ def subawards():
     u = session.get("user")
     if not u:
         return redirect(url_for("home"))
-    return render_template("subawards.html")
+    # Placeholder for now
+    return render_template("placeholder.html", title="Subawards")
 
 @app.route("/settings")
 def settings():
     u = session.get("user")
     if not u:
         return redirect(url_for("home"))
-    return render_template("settings.html")
+    return render_template("placeholder.html", title="Settings")
 
 @app.route("/profile")
 def profile():
     u = session.get("user")
     if not u:
         return redirect(url_for("home"))
-    return render_template("profile.html")
+    return render_template("placeholder.html", title="Profile")
 
 @app.route("/policies/university")
 def university_policies():
     try:
         conn = get_db()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM policies WHERE policy_level = 'University'")
-        policies = cur.fetchall()
-        cur.close()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM policies WHERE policy_level = 'University'")
+        policies = cursor.fetchall()
+        cursor.close()
         conn.close()
         return render_template("policies_university.html", policies=policies)
     except Exception as e:
@@ -285,4 +289,3 @@ def logout():
 if __name__ == "__main__":
     init_db_if_needed()
     app.run(debug=True, port=8000)
-

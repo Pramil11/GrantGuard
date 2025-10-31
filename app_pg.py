@@ -22,10 +22,9 @@ if DATABASE_URL:
     DB_NAME = url.path[1:]  # Remove leading /
     DB_PORT = url.port or 5432
 else:
-    # Use Render database credentials (local testing)
-    DB_HOST = os.getenv("PGHOST", "dpg-d426gaje5dus73bfka20-a.oregon-postgres.render.com")
-    DB_USER = os.getenv("PGUSER", "admin_user")
-    DB_PASS = os.getenv("PGPASSWORD", "NXUMDSA8WjBCkn5xBKFkxQGaKGaxNie8")
+    DB_HOST = os.getenv("PGHOST", "localhost")
+    DB_USER = os.getenv("PGUSER", "postgres")
+    DB_PASS = os.getenv("PGPASSWORD", "")
     DB_NAME = os.getenv("PGDATABASE", "grandguard")
     DB_PORT = int(os.getenv("PGPORT", "5432"))
 # ------------------------------------------------------------
