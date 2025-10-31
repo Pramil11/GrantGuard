@@ -3,7 +3,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='Templates')
 app.secret_key = "change-this-to-any-random-secret"  # needed for session
 
 # ---- DB config (use environment variables in deployment) ----
