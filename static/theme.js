@@ -61,6 +61,15 @@
         applyTheme(val);
       });
     });
+
+    const resetBtn = document.getElementById('resetPreferences');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        localStorage.removeItem(FONT_KEY);
+        localStorage.removeItem(THEME_KEY);
+        loadPreferences();
+      });
+    }
   }
 
   document.addEventListener('DOMContentLoaded', () => {

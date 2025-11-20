@@ -55,7 +55,7 @@ def get_db():
                 password=DB_PASS,
                 database=DB_NAME,
                 port=DB_PORT,
-            )
+        )
         return conn
     except Exception as e:
         print(f"DB connect error: {e}")
@@ -187,7 +187,6 @@ def dashboard():
         if conn is not None:
             try:
                 cur = conn.cursor(cursor_factory=RealDictCursor)
-                # All awards, from all PIs
                 cur.execute(
                     """
                     SELECT award_id, title, created_by_email, sponsor_type,
@@ -199,13 +198,11 @@ def dashboard():
                 )
                 awards = cur.fetchall()
 
-                # Sum of approved amounts
                 cur.execute(
                     "SELECT COALESCE(SUM(amount), 0) FROM awards WHERE status = 'Approved'"
                 )
                 row = cur.fetchone()
                 total_approved = float(row[0]) if row and row[0] is not None else 0.0
-
                 cur.close()
             except Exception as e:
                 print(f"DB fetch awards (admin) error: {e}")
@@ -1381,7 +1378,7 @@ def settings():
     u = session.get("user")
     if not u:
         return redirect(url_for("home"))
-    return render_template("settings.html")
+    return render_template("settings.html", user=u)
 
 
 @app.route("/profile")
@@ -1389,21 +1386,197 @@ def profile():
     u = session.get("user")
     if not u:
         return redirect(url_for("home"))
-    return render_template("profile.html")
+    awards = []
+    conn = get_db()
+    if conn is not None:
+        try:
+            cur = conn.cursor(dictionary=True)
+            cur.execute(
+                """
+                SELECT award_id, title, sponsor_type, amount, start_date, end_date, status, created_at
+                FROM awards
+                WHERE created_by_email=%s
+                ORDER BY created_at DESC
+                """,
+                (u["email"],),
+            )
+            awards = cur.fetchall()
+            cur.close()
+        except Exception as e:
+            print(f"DB fetch awards (profile) error: {e}")
+        finally:
+            conn.close()
+    stats = {
+        "total_awards": len(awards),
+        "active_awards": sum(1 for a in awards if (a.get("status") or "").lower() == "active"),
+        "latest_award": awards[0] if awards else None,
+    }
+    return render_template("profile.html", user=u, awards=awards, stats=stats)
 
 
 @app.route("/policies/university")
 def university_policies():
-    try:
-        conn = get_db()
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        cur.execute("SELECT * FROM policies WHERE policy_level = 'University'")
-        policies = cur.fetchall()
-        cur.close()
-        conn.close()
-        return render_template("policies_university.html", policies=policies)
-    except Exception as e:
-        return f"Database error: {e}"
+    policy_data = [
+        {
+            "level": "University",
+            "title": "University Research Budget Policy",
+            "sections": [
+                {
+                    "heading": "Personnel (Salary)",
+                    "rules": [
+                        "Salaries are only allowed for people who directly work on research tasks.",
+                        "Paying anyone who does not contribute to the research is not allowed.",
+                        "Administrative staff cannot be charged unless 100% dedicated to the project.",
+                        "Inflating effort or hours is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Equipment",
+                    "rules": [
+                        "Only research-related equipment can be purchased.",
+                        "Equipment under $5,000 is allowed.",
+                        "Equipment over $5,000 requires university approval.",
+                        "Personal-use electronics are not allowed.",
+                        "Buying equipment not needed for the project is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Travel",
+                    "rules": [
+                        "Travel must be directly related to the project.",
+                        "Only economy-class travel is allowed.",
+                        "Upgraded seats are not allowed.",
+                        "Personal or vacation travel is not allowed.",
+                        "Charging unrelated travel is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Materials & Supplies",
+                    "rules": [
+                        "Only supplies used for research activities are allowed.",
+                        "Office supplies are not allowed.",
+                        "Decorations are not allowed.",
+                        "Non-research purchases will be treated as violations.",
+                    ],
+                },
+                {
+                    "heading": "Other Direct Costs",
+                    "rules": [
+                        "Participant incentives are allowed.",
+                        "Publication fees are allowed.",
+                        "Research-related software is allowed.",
+                        "Membership fees are not allowed unless required.",
+                        "Charging unrelated services is a violation.",
+                    ],
+                },
+            ],
+        },
+        {
+            "level": "Sponsor",
+            "title": "Sponsor Research Budget Policy",
+            "sections": [
+                {
+                    "heading": "Personnel (Salary)",
+                    "rules": [
+                        "Only salaries listed in the sponsor-approved proposal are allowed.",
+                        "Adding new personnel without approval is not allowed.",
+                        "Admin/clerical salaries require written sponsor approval.",
+                        "Charging unapproved salary lines is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Equipment",
+                    "rules": [
+                        "Only equipment approved in the proposal is allowed.",
+                        "New or unplanned equipment purchases require sponsor approval.",
+                        "General-purpose equipment is not allowed.",
+                        "Buying items not listed in the proposal is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Travel",
+                    "rules": [
+                        "Only travel included in the proposal budget is allowed.",
+                        "Sponsor-required travel is allowed.",
+                        "Foreign travel requires approval.",
+                        "Non-research travel is not allowed.",
+                        "Charging personal travel is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Participant Support Costs (PSC)",
+                    "rules": [
+                        "PSC can only be used for participant stipends, travel, lodging, and meals.",
+                        "PSC cannot be used to pay PI or staff salaries.",
+                        "PSC cannot be rebudgeted without sponsor approval.",
+                        "Using PSC funds for equipment is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Subawards",
+                    "rules": [
+                        "Only approved subawards listed in the proposal are allowed.",
+                        "Informal payments without agreements are not allowed.",
+                        "Adding new partners requires sponsor approval.",
+                        "Paying unapproved subrecipients is a violation.",
+                    ],
+                },
+            ],
+        },
+        {
+            "level": "Federal",
+            "title": "Federal Policy",
+            "sections": [
+                {
+                    "heading": "Personnel (Salary)",
+                    "rules": [
+                        "Salaries must match the percentage of time worked on the project.",
+                        "Paying someone more than their normal rate is not allowed.",
+                        "Charging unrelated work to the project is a violation.",
+                        "Administrative salaries are only allowed in special circumstances.",
+                    ],
+                },
+                {
+                    "heading": "Equipment",
+                    "rules": [
+                        "Equipment must be necessary for the project.",
+                        "Federal procurement rules must be followed.",
+                        "Splitting purchases to avoid bidding rules is not allowed.",
+                        "Buying equipment for future projects is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Travel",
+                    "rules": [
+                        "Only economy travel is allowed.",
+                        "Travel must support project goals.",
+                        "Foreign travel must follow the Fly America Act.",
+                        "Business/first-class travel is not allowed.",
+                        "Charging personal travel is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Subawards & Procurement",
+                    "rules": [
+                        "Vendors must be selected competitively when required.",
+                        "Sole-source purchases must be documented.",
+                        "Personal relationships cannot influence vendor selection.",
+                        "Paying individuals without contracts is a violation.",
+                    ],
+                },
+                {
+                    "heading": "Documentation",
+                    "rules": [
+                        "Receipts are required for all expenses.",
+                        "Justifications must clearly show project benefit.",
+                        "Missing documentation is not allowed.",
+                        "Vague explanations are considered violations.",
+                    ],
+                },
+            ],
+        },
+    ]
+    return render_template("policies_university.html", policies=policy_data)
 
 
 @app.route("/logout")
