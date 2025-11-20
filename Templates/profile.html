@@ -11,6 +11,7 @@
 </head>
 <body>
   <div class="app-shell">
+    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <img src="{{ url_for('static', filename='assets/GrandGuard.png') }}" alt="GrantGuard logo" class="logo-img" />
@@ -26,6 +27,7 @@
         <a href="/logout">Log out</a>
       </nav>
     </aside>
+<<<<<<< Updated upstream
     <main class="content profile-page">
       <section class="profile-header card">
         <div class="avatar">{{ user.name[0] if user.name else user.email[0] }}</div>
@@ -95,4 +97,17 @@
   <script src="{{ url_for('static', filename='theme.js') }}"></script>
 </body>
 </html>
+=======
 
+    <!-- Main content -->
+    <main class="content">
+      <h2>Profile</h2>
+>>>>>>> Stashed changes
+
+      <section class="card" style="margin-top:24px;">
+        <p>View and update your personal information.</p>
+      </section>
+    </main>
+   <script src="{{ url_for('static', filename='theme.js') }}"></script> 
+  </div>
+</html>

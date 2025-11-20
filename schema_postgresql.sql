@@ -51,6 +51,9 @@ CREATE INDEX IF NOT EXISTS awards_pi_id_idx ON awards(pi_id);
 ALTER TABLE awards
 ALTER COLUMN status SET DEFAULT 'Draft';
 
+ALTER TABLE awards
+  ADD COLUMN IF NOT EXISTS ai_review_notes TEXT;
+
 -- ======================
 -- POLICIES TABLE
 -- ======================
@@ -197,5 +200,3 @@ ALTER TABLE awards
 
 ALTER TABLE awards
   ADD COLUMN IF NOT EXISTS materials_json JSONB;
-SELECT user_id, name, email, role, password
-FROM users;
